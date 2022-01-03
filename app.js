@@ -3,10 +3,15 @@ const path = require('path');
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate');
 const methodOverride = require('method-override');
-const Campground = require('./models/campground');
-const catchAsync = require('./utils/catchAsync')
-const ExpressError =require('./utils/ExpressError')
+const session =require('express-session')
+const flash = require('connect-flash')
 
+const ExpressError = require('./utils/ExpressError');
+const campground = require('./routers/campgrounds.js')
+const review = require('./routers/reviews.js')
+
+
+//-- connect to mongoose
 mongoose.connect('mongodb://localhost:27017/yelp-camp', {
     useNewUrlParser: true,
     useCreateIndex: true,
@@ -23,61 +28,50 @@ const app = express();
 
 app.engine('ejs', ejsMate)
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'))
+app.set('views', path.join(__dirname, 'views'));
 
-app.use(express.urlencoded({ extended: true }));
+
+app.use(express.urlencoded({ extended: true })); // because the req.body was not parsered lead to we need to use express.urlencoded to parse the request body 
 app.use(methodOverride('_method'));
+app.use(express.static(path.join(__dirname, 'public'))); // express static to access public folder
 
+//--session--
+const sessionConfig = {
+    secret: 'thisshouldbeabettersecret!',
+    resave: false,               // to prevent the Deprecation pop-up in command promt when using session
+    saveUninitialized: true,     // to prevent the Deprecation pop-up in command promt when using session
+    cookie: {
+        httpOnly: true,
+        exprires: Date.now() + 1000 * 60 * 60 * 24 * 7 , // set the time exprire for one week
+        maxAge: 1000 * 60 * 60 * 24 * 7 ,
+    }
+}
+
+app.use(session(sessionConfig))
+
+//-- middleware for flash(special area of the session used for storing messages. Messages are written to the flash and cleared after being displayed to the user.)
+app.use(flash());
+app.use((req, res, next) => {
+    res.locals.success = req.flash('success')
+    res.locals.error = req.flash('error')
+    next();
+})
+
+app.use("/campgrounds", campground);
+app.use('/campgrounds/:id/review', review) // we using mergeparams in router/reviews.js file to take the id
 
 app.get('/', (req, res) => {
-    res.render('home')
-});
-app.get('/campgrounds',catchAsync( async (req, res) => {
-    const campgrounds = await Campground.find({});
-    res.render('campgrounds/index', { campgrounds })
-}));
-app.get('/campgrounds/new', (req, res) => {
-    res.render('campgrounds/new');
+    res.render('home.ejs');
 })
 
-app.post('/campgrounds',catchAsync(async (req, res, next) => {
-    if(!req.body.campground) throw new ExpressError('Invalid Campground',400)
-    const campground = new Campground(req.body.campground);
-    await campground.save();
-    res.redirect(`/campgrounds/${campground._id}`)
-}))
-
-app.get('/campgrounds/:id',catchAsync( async (req, res,) => {
-    const campground = await Campground.findById(req.params.id)
-    res.render('campgrounds/show', { campground });
-}));
-
-app.get('/campgrounds/:id/edit', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id)
-    res.render('campgrounds/edit', { campground });
-}))
-
-app.put('/campgrounds/:id',catchAsync( async (req, res) => {
-    const { id } = req.params;
-    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground });
-    res.redirect(`/campgrounds/${campground._id}`)
-}));
-
-app.delete('/campgrounds/:id', catchAsync(async (req, res) => {
-    const { id } = req.params;
-    await Campground.findByIdAndDelete(id);
-    res.redirect('/campgrounds');
-}))
-
-// 
-app.use('*',(err,req,res,next) =>{
-   next(new ExpressError('Page Not Found',404))
+app.all('*', (req, res, next) => {
+    next(new ExpressError('Page Not Found', 404))
 })
-//error handler 
-app.use((err, req,res, next)=>{
-    const {statusCode =500 } = err;
-    
-    res.status(statusCode).render('error');
+
+app.use((err, req, res, next) => {
+    const { statusCode = 500 } = err;
+    if (!err.message) err.message = 'Oh No, Something Went Wrong!'
+    res.status(statusCode).render('error', { err })
 })
 
 app.listen(4000, () => {
