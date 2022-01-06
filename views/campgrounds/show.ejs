@@ -16,23 +16,30 @@
                     <li class="list-group-item text-muted">
                         <%= campground.location%>
                     </li>
+                    <li class="list-group-item text-muted">
+                       <h6>Submitted by <b><%= campground.author.username%></b></h6>  
+                    </li>
                     <li class="list-group-item">$<%= campground.price%>/night</li>
                 </ul>
+                <%# //--- we compare the author of campground and currentuserlogin to access the edit and delete button %>
+                <% if( currentUser && campground.author.equals(currentUser._id)){ %>  
                 <div class="card-body">
                     <a class="card-link btn btn-info" href="/campgrounds/<%=campground._id%>/edit">Edit</a>
                     <form class="d-inline" action="/campgrounds/<%=campground._id%>?_method=DELETE" method="POST">
                         <button class="btn btn-danger">Delete</button>
                     </form>
                 </div>
+                <% } %> 
                 <div class="card-footer text-muted">
                     2 days ago
                 </div>
             </div>
         </div>
         <div class="col-6">
+            
             <div class="card mb-3">
                 <h2 class="mb-2">Leave a review</h2>
-                <form action="/campgrounds/<%=campground._id%>/review" method="POST" novalidate
+                <form action="/campgrounds/<%=campground._id%>/reviews" method="POST" novalidate
                     class="mb-3 validation_form">
                     <%# // the valivadation_form of the bootstrap can find in file boilerplate.ejs %>
                         <div class="mb-3">
@@ -50,6 +57,7 @@
                         </div>
                         <button class="btn btn-success">Submit</button>
                 </form>
+                
                 <%# //---- list all the reviews----- %>
                     <% campground.reviews.forEach(review=>{ %>
                         <div class="card mb-3">
