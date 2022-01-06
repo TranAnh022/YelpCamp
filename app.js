@@ -5,13 +5,20 @@ const ejsMate = require('ejs-mate');
 const methodOverride = require('method-override');
 const session =require('express-session')
 const flash = require('connect-flash')
+const LocalStrategy = require('passport-local');
+const passport = require('passport');
+
+const User = require('./models/users.js') // requires the model with Passport-Local Mongoose plugged in
 
 const ExpressError = require('./utils/ExpressError');
-const campground = require('./routers/campgrounds.js')
-const review = require('./routers/reviews.js')
+
+const userRouter = require('./routers/users.js')
+const campgroundRouter = require('./routers/campgrounds.js')
+const reviewRouter = require('./routers/reviews.js');
+const campground = require('./models/campground.js');
 
 
-//-- connect to mongoose
+//-- connect to mongoose ---
 mongoose.connect('mongodb://localhost:27017/yelp-camp', {
     useNewUrlParser: true,
     useCreateIndex: true,
@@ -30,11 +37,6 @@ app.engine('ejs', ejsMate)
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-
-app.use(express.urlencoded({ extended: true })); // because the req.body was not parsered lead to we need to use express.urlencoded to parse the request body 
-app.use(methodOverride('_method'));
-app.use(express.static(path.join(__dirname, 'public'))); // express static to access public folder
-
 //--session--
 const sessionConfig = {
     secret: 'thisshouldbeabettersecret!',
@@ -49,16 +51,33 @@ const sessionConfig = {
 
 app.use(session(sessionConfig))
 
+app.use(express.urlencoded({ extended: true })); // because the req.body was not parsered lead to we need to use express.urlencoded to parse the request body 
+app.use(methodOverride('_method'));
+app.use(express.static(path.join(__dirname, 'public'))); // express static to access public folder
+
+//--passport --- app.use session must be executed before passport session
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate())); // use static authenticate method of model in LocalStrategy
+
+passport.serializeUser(User.serializeUser()); //store in the session
+passport.deserializeUser(User.deserializeUser()) // unstore in the session
+
+
+
 //-- middleware for flash(special area of the session used for storing messages. Messages are written to the flash and cleared after being displayed to the user.)
 app.use(flash());
 app.use((req, res, next) => {
+    res.locals.currentUser = req.user;      //we using this middleware(not belong to flash) to check who is a current user.
     res.locals.success = req.flash('success')
     res.locals.error = req.flash('error')
     next();
 })
 
-app.use("/campgrounds", campground);
-app.use('/campgrounds/:id/review', review) // we using mergeparams in router/reviews.js file to take the id
+// ----Route ---
+app.use("/", userRouter)
+app.use("/campgrounds", campgroundRouter);
+app.use('/campgrounds/:id/reviews', reviewRouter) // we using mergeparams in router/reviews.js file to take the id
 
 app.get('/', (req, res) => {
     res.render('home.ejs');
