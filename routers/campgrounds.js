@@ -30,10 +30,12 @@ router.post('/',isLoggedIn, validateCampground, catchAsync(async (req, res, next
 
 
 router.get('/:id', catchAsync(async (req, res,) => {
-    const campground = await Campground.findById(req.params.id).populate("reviews").populate('author');
-    //populate is the function of mongoose use to extract the data as ObjectId.
-    //We need to use this method to extract all the reviews which is stored as ObjectId in the campground
-    console.log(campground)
+    const campground = await Campground.findById(req.params.id).populate({      //this is a nested populate. We populate all the review from the campground that we are finding
+        path: "reviews",                                                        // there are many reviews which were written by many user. We also need to populate the author in every reviews
+        populate: {
+            path:"author",
+        }
+        }).populate('author');                                                  //populate is the function of mongoose use to extract all the reviews which is stored as ObjectId in the campground
     if (!campground) {
         req.flash('error', 'cannot find the campground')
         return( res.redirect('/campgrounds'))
