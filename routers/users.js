@@ -1,48 +1,20 @@
 const express = require('express');
-const User = require('../models/users');
+
 const router = express.Router();
 const catchAsync = require('../utils/catchAsync')
 const passport = require('passport');
-
+const users = require('../controllers/users')
 
 // ---- register ---
-router.get("/register", (req, res) => {
-    res.render('users/register')
-})
+router.get("/register", users.renderRegisterForm)
 
-router.post('/register', catchAsync(async (req, res, next) => {
-    try {
-        const { username, email, password } = req.body;
-        const user = new User({ email, username });
-        const registerUser = await User.register(user, password) //using the register method from password middleware
-        req.login(registerUser, (err) => {
-            if (err) return next(err);
-            req.flash("success", "Welcome to Yelp Camp!")
-            res.redirect('/campgrounds')
-        })
-    } catch (e) { 
-        req.flash('error', e.message);
-        res.redirect('register');
-    }
-    
-}))
+router.post('/register', catchAsync(users.createUser))
 
 // --- login ----
-router.get('/login',(req, res)=> {
-    res.render('users/login')
-})
+router.get('/login', users.renderLoginForm)
 
-router.post('/login', passport.authenticate('local', { failureFlash: true, failureRedirect: '/login' }), (req, res) => {
-    req.flash('success', 'welcome back!');
-    const redirectUrl = req.session.returnTo || '/campgrounds'      //when user access to any page requires login, after login it will redirect to the current page
-    delete req.session.returnTo                                     // keep no remnants(the url) in the session
-    res.redirect(redirectUrl)
-})
+router.post('/login', passport.authenticate('local', { failureFlash: true, failureRedirect: '/login' }), users.login)
 
-router.get('/logout', (req, res) => {
-    req.logout();                   //logout is the helper from passport
-    req.flash('success', 'Bye!!!')
-    res.redirect('/campgrounds')
-})
+router.get('/logout', users.logout)
 
 module.exports =router
