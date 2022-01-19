@@ -2,9 +2,20 @@ const mongoose = require('mongoose');
 const review = require('./review');
 const Schema = mongoose.Schema;
 
+
+const ImageSchema = new Schema({
+    url: String,
+    fileName: String,
+})
+//'https://res.cloudinary.com/dirbmyqcl/image/upload/w_200/v1642598942/YelpCamp/rprjvpmzsmnieeuiaeqq.jpg'
+//adding virtual schema to resize the img to 200px
+ImageSchema.virtual('thumbnail').get(function () {
+    return this.url.replace('/upload','/upload/w_200')
+})
+
 const CampgroundSchema = new Schema({
     title: String,
-    image: String,
+    images: [ImageSchema],
     price: Number,
     description: String,
     location: String,

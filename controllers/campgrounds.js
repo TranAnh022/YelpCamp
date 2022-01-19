@@ -1,5 +1,5 @@
 const Campground = require('../models/campground');
-
+const { cloudinary } = require("../cloudinary/index.js")
 //--- Show all the campgrounds ---
 module.exports.index = async (req, res) => {
     const campgrounds = await Campground.find({});
@@ -11,11 +11,12 @@ module.exports.renderFormNew = (req, res) => {
     res.render('campgrounds/new');
 }
 
-module.exports.createNewCampground =async (req, res, next) => {
-    // if (!req.body.campground) throw new ExpressError('Invalid Campground Data', 400);
+module.exports.createNewCampground = async (req, res, next) => {
     const campground = new Campground(req.body.campground);
+    campground.images = req.files.map(f =>({url: f.path, fileName : f.filename})) //map all the img files(multer) and add to campground
     campground.author = req.user._id;                           // we need to add the campground's owner
     await campground.save();
+    console.log(campground.images)
     req.flash("success", "Congratulations on successfully creating a new campground!!!")
     res.redirect(`/campgrounds/${campground._id}`)
 }
@@ -44,8 +45,18 @@ module.exports.renderFormEdit =async (req, res) => {
 }
 
 module.exports.editCampground =async (req, res) => {
-    const {id} = req.params;
-    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground });// using rest parameters(...) to take all input for updating
+    const { id } = req.params;
+  
+    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground });// using rest operator(...) to take all input for updating
+    const imgs =req.files.map(f =>({url: f.path, fileName : f.filename}))   //create an imgs array 
+    campground.images.push(...imgs) //using spread oparator(...) take the data from the array, pass that into push..
+    await campground.save();
+    if (req.body.deleteImages) {
+        for (let filename of req.body.deleteImages) {
+            await cloudinary.uploader.destroy(filename);        //using uploader.destroy method from cloudinary to revome the file in cloudinary
+        }
+        await campground.updateOne({ $pull: { images: { fileName: { $in: req.body.deleteImages } } } }) //Pull from the images array, all images where the filename of that image is in the request
+    }
     req.flash("success", "Updated successfully!!!")
     res.redirect(`/campgrounds/${campground._id}`)
 }
