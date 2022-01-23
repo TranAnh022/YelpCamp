@@ -1,5 +1,8 @@
 const Campground = require('../models/campground');
-const { cloudinary } = require("../cloudinary/index.js")
+const mbxGeocoding = require("@mapbox/mapbox-sdk/services/geocoding");
+const mapBoxToken = process.env.MAPBOX_TOKEN;
+const geocoder = mbxGeocoding({ accessToken: mapBoxToken });
+const { cloudinary } = require("../cloudinary");
 //--- Show all the campgrounds ---
 module.exports.index = async (req, res) => {
     const campgrounds = await Campground.find({});
@@ -12,7 +15,12 @@ module.exports.renderFormNew = (req, res) => {
 }
 
 module.exports.createNewCampground = async (req, res, next) => {
+    const geoData = await geocoder.forwardGeocode({
+        query: req.body.campground.location,
+        limit: 1
+    }).send()
     const campground = new Campground(req.body.campground);
+    campground.geometry = geoData.body.features[0].geometry;
     campground.images = req.files.map(f =>({url: f.path, fileName : f.filename})) //map all the img files(multer) and add to campground
     campground.author = req.user._id;                           // we need to add the campground's owner
     await campground.save();

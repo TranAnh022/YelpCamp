@@ -48,6 +48,9 @@
 
         <%#//   ---Form for review---     %>
         <div class="col-6">
+                <!-- MAP -->
+        <div id='map' style='width: 100%; height: 300px;'></div>
+                <!-- REVIEW -->
             <%if(currentUser) {%> 
             <div class="card mb-3">
                 <h2 class="mb-2">Leave a review</h2>
@@ -100,3 +103,10 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const mapToken = '<%-process.env.MAPBOX_TOKEN%>';
+        const campground = <%- JSON.stringify(campground) %>
+    </script>
+    
+    <script src="/javascripts/showPageMap.js"></script>
