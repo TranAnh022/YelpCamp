@@ -1,9 +1,6 @@
 <% layout('layouts/boilerplate')%>
-
+<div id ="map" style="width: 100%; height:500px"></div>
 <h1>All Campgrounds</h1>
-<div>
-    <a href="/campgrounds/new">Add Campground</a>
-</div>
 <% for (let campground of campgrounds){%>
 <div class="card" mb-3>
     <div class="row">
@@ -28,3 +25,13 @@
     </div>
 </div>
 <% }%>
+
+ <!-- MapBox is expecting an object with the key of features set to an array but our data 
+is not located under a key of features.It's just an array. We could make an object by using "features" method -->
+<script>
+    const mapToken = '<%-process.env.MAPBOX_TOKEN%>';
+    const campgrounds = {features : <%- JSON.stringify(campgrounds) %>};
+
+</script>
+
+<script src="/javascripts/cluster.js"></script>
