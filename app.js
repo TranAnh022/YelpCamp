@@ -19,11 +19,14 @@ const ExpressError = require('./utils/ExpressError');
 const userRouter = require('./routers/users.js')
 const campgroundRouter = require('./routers/campgrounds.js')
 const reviewRouter = require('./routers/reviews.js');
-const campground = require('./models/campground.js');
 
 
 //-- connect to mongoose ---
-mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+const MongoDBStore = require("connect-mongo")(session);
+
+//const dbUrl = process.env.DB_URL
+ const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp'
+mongoose.connect(dbUrl, {
     useNewUrlParser: true,
     useCreateIndex: true,
     useUnifiedTopology: true,
@@ -43,12 +46,28 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 //--session--
+
+const secret = process.env.SECRET || 'thisshouldbeabettersecret!';
+
+const store = new MongoDBStore({
+    url: dbUrl,
+    secret,
+    touchAfter: 24 * 60 * 60
+});
+
+store.on("error", function (e) {
+    console.log("SESSION STORE ERROR", e)
+})
+
 const sessionConfig = {
-    secret: 'thisshouldbeabettersecret!',
+    store,
+    name: 'session',
+    secret,
     resave: false,               // to prevent the Deprecation pop-up in command promt when using session
     saveUninitialized: true,     // to prevent the Deprecation pop-up in command promt when using session
     cookie: {
         httpOnly: true,
+       // secure: true,
         exprires: Date.now() + 1000 * 60 * 60 * 24 * 7 , // set the time exprire for one week
         maxAge: 1000 * 60 * 60 * 24 * 7 ,
     }
